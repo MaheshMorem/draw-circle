@@ -130,7 +130,7 @@
             ctx.lineTo(scaledX, scaledY);
             
             colorPhase = (colorPhase + 2) % 360;
-            ctx.strokeStyle = `hsl(${colorPhase}, 100%, 50%)`;
+            ctx.strokeStyle = hsl(${colorPhase}, 100%, 50%);
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -186,14 +186,14 @@
             
             score = Math.round(Math.max(0, Math.min(100, score * 100)));
             
-            scoreElement.textContent = `SCORE: ${score}%`;
+            scoreElement.textContent = SCORE: ${score}%;
             messageElement.textContent = score >= 95 ? "PERFECT!" : 
                                        score >= 80 ? "GOOD!" : 
                                        score >= 50 ? "KEEP TRYING" : "TRY AGAIN";
         }
 
         async function shareScore() {
-            const text = `I scored ${scoreElement.textContent} in Pixel Circle Challenge! 🎮🕹️ #PixelCircleChallenge`;
+            const text = I scored ${scoreElement.textContent} in Pixel Circle Challenge! 🎮🕹️ #PixelCircleChallenge;
             
             try {
                 if (navigator.share) {
@@ -203,7 +203,7 @@
                         url: window.location.href
                     });
                 } else {
-                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                    window.open(https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}, '_blank');
                 }
             } catch (err) {
                 console.log('Sharing cancelled');
