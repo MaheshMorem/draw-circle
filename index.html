@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pixel Circle Challenge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #1a1a1a;
+            margin: 0;
+            padding: 10px;
+            font-family: 'Press Start 2P', cursive;
+            color: #00ff00;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            margin: 10px;
+            width: 95vw;
+            height: 95vw;
+            max-width: 400px;
+            max-height: 400px;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        #score {
+            font-size: 20px;
+            margin: 15px;
+            text-shadow: 2px 2px #000000;
+            text-align: center;
+        }
+
+        #shareButton {
+            background: #00ff00;
+            border: 3px solid #000000;
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            cursor: pointer;
+            margin: 15px;
+            transition: transform 0.1s;
+            font-size: 12px;
+        }
+
+        #message {
+            font-size: 14px;
+            margin: 10px;
+            min-height: 20px;
+            text-align: center;
+        }
+
+        .center-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #00ff00;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="score">SCORE: 0%</div>
+    <div id="gameContainer">
+        <div class="center-dot" style="left: 50%; top: 50%;"></div>
+        <canvas id="canvas"></canvas>
+        <div id="message"></div>
+    </div>
+    <button id="shareButton">SHARE SCORE</button>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const messageElement = document.getElementById('message');
+        const shareButton = document.getElementById('shareButton');
+
+        let isDrawing = false;
+        let points = [];
+        let idealRadius = 0;
+        const center = { x: 0, y: 0 };
+        let colorPhase = 0;
+
+        function initializeCanvas() {
+            const container = document.getElementById('gameContainer');
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+            center.x = canvas.width / 2;
+            center.y = canvas.height / 2;
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            points = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const scaledX = x * (canvas.width / rect.width);
+            const scaledY = y * (canvas.height / rect.height);
+            
+            idealRadius = Math.hypot(scaledX - center.x, scaledY - center.y);
+            points.push({x: scaledX, y: scaledY});
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const scaledX = x * (canvas.width / rect.width);
+            const scaledY = y * (canvas.height / rect.height);
+            
+            points.push({x: scaledX, y: scaledY});
+            
+            ctx.beginPath();
+            ctx.moveTo(points[points.length-2].x, points[points.length-2].y);
+            ctx.lineTo(scaledX, scaledY);
+            
+            colorPhase = (colorPhase + 2) % 360;
+            ctx.strokeStyle = `hsl(${colorPhase}, 100%, 50%)`;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function endDrawing() {
+            isDrawing = false;
+            calculateScore();
+        }
+
+        function calculateScore() {
+            if (points.length < 20) {
+                messageElement.textContent = "TOO SHORT!";
+                scoreElement.textContent = "SCORE: 0%";
+                return;
+            }
+
+            let totalError = 0;
+            let validPoints = 0;
+            
+            // Calculate average radius
+            let totalRadius = 0;
+            points.forEach(point => {
+                const distance = Math.hypot(point.x - center.x, point.y - center.y);
+                totalRadius += distance;
+            });
+            const averageRadius = totalRadius / points.length;
+
+            // Calculate error percentage
+            points.forEach(point => {
+                const distance = Math.hypot(point.x - center.x, point.y - center.y);
+                const error = Math.abs(distance - averageRadius);
+                totalError += error;
+                validPoints++;
+            });
+
+            const averageError = totalError / validPoints;
+            const closureError = Math.hypot(
+                points[0].x - points[points.length-1].x,
+                points[0].y - points[points.length-1].y
+            );
+
+            // Calculate score components
+            const radiusAccuracy = 1 - (averageError / averageRadius);
+            const closureAccuracy = 1 - (closureError / (averageRadius * 0.2));
+            const completion = Math.min(1, points.length / 100);
+
+            // Combine scores with weights
+            let score = (radiusAccuracy * 0.6) + 
+                       (closureAccuracy * 0.3) + 
+                       (completion * 0.1);
+            
+            score = Math.round(Math.max(0, Math.min(100, score * 100)));
+            
+            scoreElement.textContent = `SCORE: ${score}%`;
+            messageElement.textContent = score >= 95 ? "PERFECT!" : 
+                                       score >= 80 ? "GOOD!" : 
+                                       score >= 50 ? "KEEP TRYING" : "TRY AGAIN";
+        }
+
+        async function shareScore() {
+            const text = `I scored ${scoreElement.textContent} in Pixel Circle Challenge! 🎮🕹️ #PixelCircleChallenge`;
+            
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'Pixel Circle Challenge',
+                        text: text,
+                        url: window.location.href
+                    });
+                } else {
+                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                }
+            } catch (err) {
+                console.log('Sharing cancelled');
+            }
+        }
+
+        // Event Listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', endDrawing);
+        shareButton.addEventListener('click', shareScore);
+        window.addEventListener('resize', initializeCanvas);
+        
+        initializeCanvas();
+    </script>
+</body>
+</html>
